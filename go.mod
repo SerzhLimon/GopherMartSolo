@@ -1,6 +1,6 @@
 module github.com/SerzhLimon/GopherMartSolo
 
-go 1.25.1
+go 1.24.0
 
 require (
 	github.com/caarlos0/env/v6 v6.10.1
