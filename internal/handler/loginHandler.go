@@ -49,10 +49,10 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) loginUser(req user.UserRequest, isHashed bool) (int, error) {
-	query := `SELECT id FROM users WHERE login = $1 AND password = $2`
+	
 	pass := req.Password
 	if !isHashed {
 		pass = crypto.HashString(req.Password)
 	}
-	return h.Storage.DBStorage.CountRows(query, req.Login, pass)
+	return h.Storage.DBStorage.CountRows(queryLogin, req.Login, pass)
 }

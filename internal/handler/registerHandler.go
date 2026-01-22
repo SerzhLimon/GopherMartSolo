@@ -83,8 +83,7 @@ func (h *Handler) registrationUser(req user.UserRequest, isHashed bool) error {
 		pass = crypto.HashString(req.Password) // хеширование пароля
 	}
 
-	query := `INSERT INTO users (login, password) VALUES ($1, $2)`
-	if err := h.Storage.DBStorage.Insert(query, req.Login, pass); err != nil {
+	if err := h.Storage.DBStorage.Insert(queryCreateUser, req.Login, pass); err != nil {
 		return err
 	}
 
@@ -92,14 +91,11 @@ func (h *Handler) registrationUser(req user.UserRequest, isHashed bool) error {
 }
 
 func (h *Handler) userIsRegistred(login string) (bool, error) {
-	query := `SELECT COUNT(login) FROM users WHERE login = $1`
-	result, err := h.Storage.DBStorage.CountRows(query, login)
+	result, err := h.Storage.DBStorage.CountRows(queryIsRegistred, login)
 	return result > 0, err
 }
 
 func (h *Handler) addUserBalance(userID int) error {
-	query := `INSERT INTO user_balance (user_id, current, withdrawn, updated_at, uploaded_at) 
-	VALUES ($1, $2, $3, $4, $5)`
 	t := time.Now()
-	return h.Storage.DBStorage.Insert(query, userID, 0, 0, t, t)
+	return h.Storage.DBStorage.Insert(queryAddBalance, userID, 0, 0, t, t)
 }

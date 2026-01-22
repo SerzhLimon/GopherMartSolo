@@ -26,8 +26,7 @@ func (h *Handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `SELECT user_id, current, withdrawn FROM user_balance WHERE user_id = $1`
-	row := h.Storage.DBStorage.InsertWithReturning(query, userID)
+	row := h.Storage.DBStorage.InsertWithReturning(queryInsertWithReturning, userID)
 	userBalance, err := helpers.GetUserBalance(row)
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -43,23 +42,13 @@ func (h *Handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 	userBalance.Withdrawn += req.Sum
 	userBalance.Current = balance
 
-	query = `
-		UPDATE user_balance
-		SET current = $2,
-			withdrawn = $3,
-			updated_at = $4
-		WHERE user_id = $1
-	`
-	err = h.Storage.DBStorage.Insert(query, userID, userBalance.Current, userBalance.Withdrawn, time.Now())
+	
+	err = h.Storage.DBStorage.Insert(queryUpdateUserBalance, userID, userBalance.Current, userBalance.Withdrawn, time.Now())
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 
-	query = `
-		INSERT INTO balance_operations (user_id, type, amount, order_number, processed_at)
-		VALUES ($1, 'withdraw', $2, $3, $4)
-	`
-	err = h.Storage.DBStorage.Insert(query, userID, req.Sum, req.Order, time.Now())
+	err = h.Storage.DBStorage.Insert(queryInsertBalanceOperations, userID, req.Sum, req.Order, time.Now())
 	if err != nil {
 		http.Error(w, "Failed to save withdrawal", http.StatusInternalServerError)
 		return
