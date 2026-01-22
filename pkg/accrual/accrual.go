@@ -199,7 +199,7 @@ func (a *accrual) runJob(cmd jobCommand) {
 
 			// Обновляем статус
 			if accrualData.Status == "PROCESSED" || accrualData.Status == "INVALID" {
-				
+
 				err := a.dbStorage.DBStorage.Insert(queryUpdateFailed,
 					accrualData.Status, accrualData.Accrual, cmd.OrderNumber, time.Now())
 				if err != nil {
@@ -217,7 +217,7 @@ func (a *accrual) runJob(cmd jobCommand) {
 				return // Завершаем job
 			} else {
 				fmt.Printf("Order %s is %s\n", cmd.OrderNumber, accrualData.Status)
-				
+
 				_ = a.dbStorage.DBStorage.Insert(queryUpdate,
 					accrualData.Status, cmd.OrderNumber, time.Now())
 				delay += time.Second
@@ -258,13 +258,15 @@ func (a *accrual) cleanupJob(orderNumber string) {
 	}
 }
 
-func (a *accrual) Start() {
+func (a *accrual) Start(ctx context.Context) {
 	//TODO: подумать как создавать JOB при получении заказа, а не пушить БД каждые 5 секунд
 	ticker := time.NewTicker(5 * time.Second) //проверяем БД каждый 5 секунд
 	defer ticker.Stop()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-a.stopCh:
 			return
 		case <-ticker.C:
