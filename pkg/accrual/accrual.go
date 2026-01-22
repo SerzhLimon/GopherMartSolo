@@ -80,8 +80,7 @@ func (a *accrual) getOrderAccrual(order string) (*accrualOrder, error) {
 
 func (a *accrual) getOpenOrders() {
 
-	query := `SELECT * FROM orders WHERE status IN ('NEW', 'PROCESSING')`
-	rows, err := a.dbStorage.DBStorage.GetRows(context.Background(), query)
+	rows, err := a.dbStorage.DBStorage.GetRows(context.Background(), querySelectOrders)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -199,10 +198,9 @@ func (a *accrual) runJob(cmd jobCommand) {
 			}
 
 			// Обновляем статус
-			var query string
 			if accrualData.Status == "PROCESSED" || accrualData.Status == "INVALID" {
-				query = `UPDATE orders SET status = $1, accrual = $2, processed_at = $4 WHERE number = $3`
-				err := a.dbStorage.DBStorage.Insert(query,
+				
+				err := a.dbStorage.DBStorage.Insert(queryUpdateFailed,
 					accrualData.Status, accrualData.Accrual, cmd.OrderNumber, time.Now())
 				if err != nil {
 					fmt.Printf("Failed to update order %s: %v\n", cmd.OrderNumber, err)
@@ -219,8 +217,8 @@ func (a *accrual) runJob(cmd jobCommand) {
 				return // Завершаем job
 			} else {
 				fmt.Printf("Order %s is %s\n", cmd.OrderNumber, accrualData.Status)
-				query = `UPDATE orders SET status = $1, processed_at = $3 WHERE number = $2`
-				_ = a.dbStorage.DBStorage.Insert(query,
+				
+				_ = a.dbStorage.DBStorage.Insert(queryUpdate,
 					accrualData.Status, cmd.OrderNumber, time.Now())
 				delay += time.Second
 				ticker.Reset(delay)
@@ -236,22 +234,13 @@ func (a *accrual) runJob(cmd jobCommand) {
 
 func (a *accrual) updateOrderOperation(order *accrualOrder, userID int) error {
 
-	var query string
-
 	//логгируем операцию
-	query = `INSERT INTO balance_operations (user_id, amount, "type", order_number, processed_at) VALUES ($1, $2, $3, $4, $5)`
-	if err := a.dbStorage.DBStorage.Insert(query, userID, order.Accrual, "accrual", order.Order, time.Now()); err != nil {
+	if err := a.dbStorage.DBStorage.Insert(queryLogOperation, userID, order.Accrual, "accrual", order.Order, time.Now()); err != nil {
 		return err
 	}
 
 	//сохраняем баланс
-	query = `
-		UPDATE user_balance 
-		SET current = current + $2, 
-			updated_at = $3 
-		WHERE user_id = $1
-	`
-	err := a.dbStorage.DBStorage.Insert(query, userID, order.Accrual, time.Now())
+	err := a.dbStorage.DBStorage.Insert(queryUpdateBalance, userID, order.Accrual, time.Now())
 	if err != nil {
 		return err
 	}
